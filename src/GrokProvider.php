@@ -31,7 +31,7 @@ use RuntimeException;
  * - grok-3-mini (fast, cost-effective)
  * - grok-2 (multimodal)
  */
-final class GrokProvider implements ProviderInterface
+class GrokProvider implements ProviderInterface
 {
     private const API_URL = 'https://api.x.ai/v1/chat/completions';
 
@@ -43,7 +43,8 @@ final class GrokProvider implements ProviderInterface
         private readonly string $apiKey,
         private readonly string $defaultModel = self::MODEL_GROK_3,
         private readonly int $defaultMaxTokens = 4096,
-    ) {}
+    ) {
+    }
 
     public function chat(array $messages, array $options = []): Response
     {
@@ -242,7 +243,7 @@ final class GrokProvider implements ProviderInterface
     /**
      * Make an API request.
      */
-    private function request(array $payload): array
+    protected function request(array $payload): array
     {
         $ch = curl_init(self::API_URL);
 
@@ -281,7 +282,7 @@ final class GrokProvider implements ProviderInterface
      *
      * @return Generator<array>
      */
-    private function streamRequest(array $payload): Generator
+    protected function streamRequest(array $payload): Generator
     {
         $ch = curl_init(self::API_URL);
 
@@ -295,6 +296,7 @@ final class GrokProvider implements ProviderInterface
             ],
             CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$buffer) {
                 $buffer .= $data;
+
                 return strlen($data);
             },
         ]);
