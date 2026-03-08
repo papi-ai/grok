@@ -21,6 +21,11 @@ class TestableGrokProvider extends GrokProvider
         return $this->mockResponse;
     }
 
+    public function callThrowForStatusCode(int $httpCode, ?array $data): never
+    {
+        $this->throwForStatusCode($httpCode, $data);
+    }
+
     protected function streamRequest(array $payload): Generator
     {
         $this->lastPayload = $payload;
@@ -386,6 +391,36 @@ describe('GrokProvider', function () {
             $chunks = iterator_to_array($provider->stream([Message::user('Hi')]));
 
             expect($chunks)->toHaveCount(0);
+        });
+    });
+
+    describe('error mapping', function () {
+        it('throws AuthenticationException on 401', function () {
+            $provider = new TestableGrokProvider('test-key');
+
+            expect(fn () => $provider->callThrowForStatusCode(401, ['error' => ['message' => 'Invalid API key']]))
+                ->toThrow(\PapiAI\Core\Exception\AuthenticationException::class);
+        });
+
+        it('throws RateLimitException on 429', function () {
+            $provider = new TestableGrokProvider('test-key');
+
+            expect(fn () => $provider->callThrowForStatusCode(429, ['error' => ['message' => 'Rate limit exceeded']]))
+                ->toThrow(\PapiAI\Core\Exception\RateLimitException::class);
+        });
+
+        it('throws ProviderException on 500', function () {
+            $provider = new TestableGrokProvider('test-key');
+
+            expect(fn () => $provider->callThrowForStatusCode(500, ['error' => ['message' => 'Internal server error']]))
+                ->toThrow(\PapiAI\Core\Exception\ProviderException::class);
+        });
+
+        it('throws ProviderException with unknown error when data is null', function () {
+            $provider = new TestableGrokProvider('test-key');
+
+            expect(fn () => $provider->callThrowForStatusCode(500, null))
+                ->toThrow(\PapiAI\Core\Exception\ProviderException::class);
         });
     });
 });
