@@ -27,12 +27,21 @@ use PapiAI\Core\ToolCall;
 use RuntimeException;
 
 /**
- * Grok (xAI) API Provider.
+ * Grok (xAI) API provider for PapiAI.
  *
- * Uses the OpenAI-compatible xAI API. Supports models including:
- * - grok-3 (latest, most capable)
- * - grok-3-mini (fast, cost-effective)
- * - grok-2 (multimodal)
+ * Bridges PapiAI's core types (Message, Response, ToolCall) with xAI's OpenAI-compatible
+ * API, handling format conversion in both directions. Supports chat completions, streaming,
+ * tool calling, vision (multimodal), and structured JSON output.
+ *
+ * Authentication is via Bearer token in the Authorization header. All HTTP is done with
+ * ext-curl directly, with no HTTP abstraction layer.
+ *
+ * Supported models:
+ *   - grok-3 (latest, most capable)
+ *   - grok-3-mini (fast, cost-effective)
+ *   - grok-2 (multimodal)
+ *
+ * @see https://docs.x.ai/docs
  */
 class GrokProvider implements ProviderInterface
 {
@@ -42,6 +51,11 @@ class GrokProvider implements ProviderInterface
     public const MODEL_GROK_3_MINI = 'grok-3-mini';
     public const MODEL_GROK_2 = 'grok-2';
 
+    /**
+     * @param string $apiKey       xAI API key for Bearer token authentication
+     * @param string $defaultModel Model identifier used when not overridden in options
+     * @param int    $defaultMaxTokens Maximum tokens for completions when not overridden
+     */
     public function __construct(
         private readonly string $apiKey,
         private readonly string $defaultModel = self::MODEL_GROK_3,
@@ -49,6 +63,19 @@ class GrokProvider implements ProviderInterface
     ) {
     }
 
+    /**
+     * Send a chat completion request to the xAI API.
+     *
+     * @param Message[] $messages Conversation messages in PapiAI format
+     * @param array     $options  Provider options (model, maxTokens, temperature, stopSequences, outputSchema, tools)
+     *
+     * @return Response The parsed API response with message content and metadata
+     *
+     * @throws AuthenticationException When the API key is invalid (HTTP 401)
+     * @throws RateLimitException      When the rate limit is exceeded (HTTP 429)
+     * @throws ProviderException       On any other API error
+     * @throws RuntimeException        On cURL transport failure
+     */
     public function chat(array $messages, array $options = []): Response
     {
         $payload = $this->buildPayload($messages, $options);
@@ -57,6 +84,16 @@ class GrokProvider implements ProviderInterface
         return Response::fromOpenAI($response, $messages);
     }
 
+    /**
+     * Stream a chat completion response from the xAI API as server-sent events.
+     *
+     * @param Message[] $messages Conversation messages in PapiAI format
+     * @param array     $options  Provider options (model, maxTokens, temperature, stopSequences, outputSchema, tools)
+     *
+     * @return iterable<StreamChunk> Yields StreamChunk objects as content arrives
+     *
+     * @throws RuntimeException On cURL transport failure
+     */
     public function stream(array $messages, array $options = []): iterable
     {
         $payload = $this->buildPayload($messages, $options);
@@ -73,21 +110,33 @@ class GrokProvider implements ProviderInterface
         }
     }
 
+    /**
+     * Indicates that Grok supports tool/function calling.
+     */
     public function supportsTool(): bool
     {
         return true;
     }
 
+    /**
+     * Indicates that Grok supports vision (multimodal image input).
+     */
     public function supportsVision(): bool
     {
         return true;
     }
 
+    /**
+     * Indicates that Grok supports structured JSON output via json_schema response format.
+     */
     public function supportsStructuredOutput(): bool
     {
         return true;
     }
 
+    /**
+     * Return the provider identifier.
+     */
     public function getName(): string
     {
         return 'grok';
@@ -244,7 +293,16 @@ class GrokProvider implements ProviderInterface
     }
 
     /**
-     * Make an API request.
+     * Send a synchronous POST request to the xAI API and return the decoded response.
+     *
+     * @param array $payload The JSON-encodable request body
+     *
+     * @return array The decoded JSON response
+     *
+     * @throws AuthenticationException When the API key is invalid (HTTP 401)
+     * @throws RateLimitException      When the rate limit is exceeded (HTTP 429)
+     * @throws ProviderException       On any other API error (HTTP 4xx/5xx)
+     * @throws RuntimeException        On cURL transport failure
      */
     protected function request(array $payload): array
     {
@@ -280,11 +338,14 @@ class GrokProvider implements ProviderInterface
     }
 
     /**
-     * Throw the appropriate exception based on HTTP status code.
+     * Map an HTTP error status code to the appropriate PapiAI exception.
      *
-     * @throws AuthenticationException
-     * @throws RateLimitException
-     * @throws ProviderException
+     * @param int        $httpCode HTTP status code (>= 400)
+     * @param array|null $data     Decoded JSON error response body, if available
+     *
+     * @throws AuthenticationException When the API key is invalid (HTTP 401)
+     * @throws RateLimitException      When the rate limit is exceeded (HTTP 429)
+     * @throws ProviderException       On any other API error
      */
     protected function throwForStatusCode(int $httpCode, ?array $data): never
     {
@@ -315,9 +376,14 @@ class GrokProvider implements ProviderInterface
     }
 
     /**
-     * Make a streaming API request.
+     * Send a streaming POST request to the xAI API and yield parsed SSE events.
      *
-     * @return Generator<array>
+     * Buffers the full response then parses SSE `data:` lines, yielding each decoded
+     * JSON event until the `[DONE]` sentinel is encountered.
+     *
+     * @param array $payload The JSON-encodable request body (must include stream: true)
+     *
+     * @return Generator<int, array> Yields decoded JSON event arrays from the SSE stream
      */
     protected function streamRequest(array $payload): Generator
     {
