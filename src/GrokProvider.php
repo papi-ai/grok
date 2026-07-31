@@ -17,9 +17,11 @@ namespace PapiAI\Grok;
 use Generator;
 use PapiAI\Core\Contracts\NamedToolSelectableInterface;
 use PapiAI\Core\Contracts\ProviderInterface;
+use PapiAI\Core\Effort;
 use PapiAI\Core\Exception\AuthenticationException;
 use PapiAI\Core\Exception\ProviderException;
 use PapiAI\Core\Exception\RateLimitException;
+use PapiAI\Core\Exception\UnknownEffortException;
 use PapiAI\Core\Message;
 use PapiAI\Core\Response;
 use PapiAI\Core\Role;
@@ -44,9 +46,8 @@ use RuntimeException;
  *   - grok-2 (multimodal)
  *
  * @see https://docs.x.ai/docs *
- * The neutral `effort` option is accepted and ignored here. xAI does expose a top-level reasoning_effort parameter, but papi does not map it yet, so the option is accepted and ignored for now. Note Grok 4.5 cannot disable reasoning at all. Ignoring it
- * degrades nothing the caller was promised, which is why it is silent where an unhonourable
- * `toolChoice` throws.
+ * The neutral effort option maps to xAI's top-level reasoning_effort. Note Grok 4.5 reasons
+ * always and cannot be switched off, so "none" narrows to the shallowest level it accepts.
  */
 class GrokProvider implements ProviderInterface, NamedToolSelectableInterface
 {
@@ -71,6 +72,7 @@ class GrokProvider implements ProviderInterface, NamedToolSelectableInterface
         private readonly string $apiKey,
         private readonly string $defaultModel = self::MODEL_GROK_4_5,
         private readonly int $defaultMaxTokens = 4096,
+        private readonly ?Effort $defaultEffort = null,
     ) {
     }
 
@@ -214,7 +216,50 @@ class GrokProvider implements ProviderInterface, NamedToolSelectableInterface
             }
         }
 
+        // Reasoning effort. xAI takes a flat level, but the accepted set varies: Grok 4.5 cannot
+        // switch reasoning off at all, so "none" narrows to the shallowest level it does accept.
+        $effort = $this->effortFor($options);
+
+        if ($effort !== null) {
+            $model = (string) ($options['model'] ?? $this->defaultModel);
+            $payload['reasoning_effort'] = $effort->nearestOf($this->levelsFor($model))->value;
+        }
+
         return $payload;
+    }
+
+    /**
+     * The effort this request asks for: the per-call option, else the provider default.
+     *
+     * @param array<string, mixed> $options The caller's request options
+     *
+     * @throws UnknownEffortException When the level is not one core defines
+     */
+    private function effortFor(array $options): ?Effort
+    {
+        if (!isset($options['effort'])) {
+            return $this->defaultEffort;
+        }
+
+        $level = (string) $options['effort'];
+
+        return Effort::tryFrom($level) ?? throw new UnknownEffortException($level);
+    }
+
+    /**
+     * The levels this model accepts.
+     *
+     * Grok 4.5 reasons always and has no "none"; 4.3 and earlier can be switched off.
+     *
+     * @return non-empty-list<Effort>
+     */
+    private function levelsFor(string $model): array
+    {
+        if (str_contains($model, '4.5')) {
+            return [Effort::Low, Effort::Medium, Effort::High];
+        }
+
+        return [Effort::None, Effort::Low, Effort::Medium, Effort::High];
     }
 
     /**
