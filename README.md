@@ -32,10 +32,11 @@ echo $response->text;
 ## Available Models
 
 ```php
-GrokProvider::MODEL_GROK_3      // 'grok-3' (default)
-GrokProvider::MODEL_GROK_3_MINI // 'grok-3-mini' (fast)
-GrokProvider::MODEL_GROK_2      // 'grok-2'
+GrokProvider::MODEL_GROK_4_5  // 'grok-4.5' (default)
+GrokProvider::MODEL_GROK_4_3  // 'grok-4.3'
 ```
+
+The `MODEL_GROK_2`, `MODEL_GROK_3` and `MODEL_GROK_3_MINI` constants are still shipped but deprecated. Grok 2 is retired, and the Grok 3 pair was retired on 15 May 2026: requests silently redirect to `grok-4.3` and bill at its rates, so pin a live model explicitly.
 
 ## Features
 
