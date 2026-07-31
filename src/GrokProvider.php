@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace PapiAI\Grok;
 
 use Generator;
+use PapiAI\Core\Contracts\NamedToolSelectableInterface;
 use PapiAI\Core\Contracts\ProviderInterface;
 use PapiAI\Core\Exception\AuthenticationException;
 use PapiAI\Core\Exception\ProviderException;
@@ -42,14 +43,23 @@ use RuntimeException;
  *   - grok-3-mini (fast, cost-effective)
  *   - grok-2 (multimodal)
  *
- * @see https://docs.x.ai/docs
+ * @see https://docs.x.ai/docs *
+ * The neutral `effort` option is accepted and ignored here. xAI does expose a top-level reasoning_effort parameter, but papi does not map it yet, so the option is accepted and ignored for now. Note Grok 4.5 cannot disable reasoning at all. Ignoring it
+ * degrades nothing the caller was promised, which is why it is silent where an unhonourable
+ * `toolChoice` throws.
  */
-class GrokProvider implements ProviderInterface
+class GrokProvider implements ProviderInterface, NamedToolSelectableInterface
 {
     private const API_URL = 'https://api.x.ai/v1/chat/completions';
 
+    public const MODEL_GROK_4_5 = 'grok-4.5';
+    public const MODEL_GROK_4_3 = 'grok-4.3';
+
+    /** @deprecated Retired 15 May 2026; silently redirects to grok-4.3 and bills at its rates. */
     public const MODEL_GROK_3 = 'grok-3';
+    /** @deprecated Retired 15 May 2026; silently redirects to grok-4.3 and bills at its rates. */
     public const MODEL_GROK_3_MINI = 'grok-3-mini';
+    /** @deprecated Retired; no longer listed by xAI. */
     public const MODEL_GROK_2 = 'grok-2';
 
     /**
@@ -59,7 +69,7 @@ class GrokProvider implements ProviderInterface
      */
     public function __construct(
         private readonly string $apiKey,
-        private readonly string $defaultModel = self::MODEL_GROK_3,
+        private readonly string $defaultModel = self::MODEL_GROK_4_5,
         private readonly int $defaultMaxTokens = 4096,
     ) {
     }
