@@ -32,7 +32,8 @@ echo $response->text;
 ## Available Models
 
 ```php
-GrokProvider::MODEL_GROK_4_5  // 'grok-4.5' (default)
+GrokProvider::MODEL_GROK_4_6  // 'grok-4.6' (default, flagship)
+GrokProvider::MODEL_GROK_4_5  // 'grok-4.5'
 GrokProvider::MODEL_GROK_4_3  // 'grok-4.3'
 ```
 
