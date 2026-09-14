@@ -393,8 +393,6 @@ class GrokProvider implements ProviderInterface, NamedToolSelectableInterface
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
 
-        curl_close($ch);
-
         if ($error !== '') {
             throw new RuntimeException("Grok API request failed: {$error}");
         }
@@ -476,7 +474,6 @@ class GrokProvider implements ProviderInterface, NamedToolSelectableInterface
         ]);
 
         curl_exec($ch);
-        curl_close($ch);
 
         // Parse SSE events
         $lines = explode("\n", $buffer);
