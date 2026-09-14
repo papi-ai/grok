@@ -53,15 +53,16 @@ class GrokProvider implements ProviderInterface, NamedToolSelectableInterface
 {
     private const API_URL = 'https://api.x.ai/v1/chat/completions';
 
-    public const MODEL_GROK_4_5 = 'grok-4.5';
-    public const MODEL_GROK_4_3 = 'grok-4.3';
+    public const MODEL_GROK_4_6 = GrokModel::Grok46->value;
+    public const MODEL_GROK_4_5 = GrokModel::Grok45->value;
+    public const MODEL_GROK_4_3 = GrokModel::Grok43->value;
 
     /** @deprecated Retired 15 May 2026; silently redirects to grok-4.3 and bills at its rates. */
-    public const MODEL_GROK_3 = 'grok-3';
+    public const MODEL_GROK_3 = GrokModel::Grok3->value;
     /** @deprecated Retired 15 May 2026; silently redirects to grok-4.3 and bills at its rates. */
-    public const MODEL_GROK_3_MINI = 'grok-3-mini';
+    public const MODEL_GROK_3_MINI = GrokModel::Grok3Mini->value;
     /** @deprecated Retired; no longer listed by xAI. */
-    public const MODEL_GROK_2 = 'grok-2';
+    public const MODEL_GROK_2 = GrokModel::Grok2->value;
 
     /**
      * @param string $apiKey       xAI API key for Bearer token authentication
@@ -70,7 +71,7 @@ class GrokProvider implements ProviderInterface, NamedToolSelectableInterface
      */
     public function __construct(
         private readonly string $apiKey,
-        private readonly string $defaultModel = self::MODEL_GROK_4_5,
+        private readonly string $defaultModel = self::MODEL_GROK_4_6,
         private readonly int $defaultMaxTokens = 4096,
         private readonly ?Effort $defaultEffort = null,
     ) {
