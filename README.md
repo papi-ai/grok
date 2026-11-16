@@ -32,12 +32,17 @@ echo $response->text;
 ## Available Models
 
 ```php
-GrokProvider::MODEL_GROK_4_6  // 'grok-4.6' (default, flagship)
+GrokProvider::MODEL_GROK_4_7  // 'grok-4.7' (default, flagship)
+GrokProvider::MODEL_GROK_4_6  // 'grok-4.6'
 GrokProvider::MODEL_GROK_4_5  // 'grok-4.5'
 GrokProvider::MODEL_GROK_4_3  // 'grok-4.3'
 ```
 
 The `MODEL_GROK_2`, `MODEL_GROK_3` and `MODEL_GROK_3_MINI` constants are still shipped but deprecated. Grok 2 is retired, and the Grok 3 pair was retired on 15 May 2026: requests silently redirect to `grok-4.3` and bill at its rates, so pin a live model explicitly.
+
+## Endpoint
+
+Chat, streaming and tool calling go through xAI's Responses API (`POST /v1/responses`), which xAI recommends; Chat Completions is legacy there. Each request carries the full conversation (`store: false`).
 
 ## Features
 

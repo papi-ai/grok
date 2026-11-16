@@ -41,34 +41,34 @@ describe('GrokProvider reasoning effort', function () {
         foreach (['low', 'medium', 'high'] as $level) {
             ($this->chat)(['effort' => $level, 'model' => 'grok-4.3']);
 
-            expect($this->provider->lastPayload['reasoning_effort'])->toBe($level);
+            expect($this->provider->lastPayload['reasoning']['effort'])->toBe($level);
         }
     });
 
     it('lets 4.3 switch reasoning off', function () {
         ($this->chat)(['effort' => 'none', 'model' => 'grok-4.3']);
 
-        expect($this->provider->lastPayload['reasoning_effort'])->toBe('none');
+        expect($this->provider->lastPayload['reasoning']['effort'])->toBe('none');
     });
 
     it('will not claim 4.5 can switch reasoning off, because it cannot', function () {
         ($this->chat)(['effort' => 'none', 'model' => 'grok-4.5']);
 
-        expect($this->provider->lastPayload['reasoning_effort'])->toBe('low');
+        expect($this->provider->lastPayload['reasoning']['effort'])->toBe('low');
     });
 
     it('narrows the levels above what xAI offers', function () {
         foreach (['extra-high', 'maximum'] as $level) {
             ($this->chat)(['effort' => $level, 'model' => 'grok-4.5']);
 
-            expect($this->provider->lastPayload['reasoning_effort'])->toBe('high');
+            expect($this->provider->lastPayload['reasoning']['effort'])->toBe('high');
         }
     });
 
     it('sends nothing when the caller does not ask', function () {
         ($this->chat)([]);
 
-        expect($this->provider->lastPayload)->not->toHaveKey('reasoning_effort');
+        expect($this->provider->lastPayload)->not->toHaveKey('reasoning');
     });
 
     it('rejects a level it does not recognise', function () {
@@ -80,9 +80,9 @@ describe('GrokProvider reasoning effort', function () {
         $provider = new TestableGrokEffortProvider('k', 'grok-4.3', 4096, Effort::High);
 
         $provider->chat([Message::user('hi')], []);
-        expect($provider->lastPayload['reasoning_effort'])->toBe('high');
+        expect($provider->lastPayload['reasoning']['effort'])->toBe('high');
 
         $provider->chat([Message::user('hi')], ['effort' => 'low']);
-        expect($provider->lastPayload['reasoning_effort'])->toBe('low');
+        expect($provider->lastPayload['reasoning']['effort'])->toBe('low');
     });
 });
