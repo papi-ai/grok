@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace PapiAI\Grok;
 
+use PapiAI\Core\Effort;
+
 /**
  * Every xAI model this package knows.
  *
@@ -28,6 +30,7 @@ namespace PapiAI\Grok;
  */
 enum GrokModel: string
 {
+    case Grok47 = 'grok-4.7';
     case Grok46 = 'grok-4.6';
     case Grok45 = 'grok-4.5';
     case Grok43 = 'grok-4.3';
@@ -37,6 +40,19 @@ enum GrokModel: string
     case Grok3Mini = 'grok-3-mini';
     /** @deprecated Retired; no longer listed by xAI. */
     case Grok2 = 'grok-2';
+
+    /**
+     * The reasoning-effort levels this model accepts. Grok 4.5 has no `none`.
+     *
+     * @return list<Effort>
+     */
+    public function effortLevels(): array
+    {
+        return match ($this) {
+            self::Grok45 => [Effort::Low, Effort::Medium, Effort::High],
+            default => [Effort::None, Effort::Low, Effort::Medium, Effort::High],
+        };
+    }
 
     /**
      * Whether the provider has retired this model.

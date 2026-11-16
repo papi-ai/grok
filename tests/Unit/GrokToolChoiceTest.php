@@ -54,7 +54,7 @@ describe('GrokProvider tool choice', function () {
     it('maps a specific tool to the function form', function () {
         $this->provider->chat([Message::user('hi')], ['tools' => $this->tools, 'toolChoice' => ['name' => 'get_weather']]);
 
-        expect($this->provider->lastPayload['tool_choice'])->toBe(['type' => 'function', 'function' => ['name' => 'get_weather']]);
+        expect($this->provider->lastPayload['tool_choice'])->toBe(['type' => 'function', 'name' => 'get_weather']);
     });
 
     it('emits no tool_choice when absent (backward compatible)', function () {
