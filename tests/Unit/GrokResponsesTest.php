@@ -70,11 +70,11 @@ describe('GrokProvider on the Responses API', function () {
 
     it('declares tools flat and puts effort under reasoning', function () {
         ($this->chat)([Message::user('Hi')], [
-            'tools' => [['name' => 'get_weather', 'description' => 'Weather', 'parameters' => ['type' => 'object', 'properties' => []]]],
+            'tools' => [['name' => 'get_weather', 'description' => 'Weather', 'parameters' => ['type' => 'object', 'properties' => ['city' => ['type' => 'string']]]]],
             'effort' => 'high',
         ]);
 
-        expect($this->provider->lastPayload['tools'][0])->toBe(['type' => 'function', 'name' => 'get_weather', 'description' => 'Weather', 'parameters' => ['type' => 'object', 'properties' => []]]);
+        expect($this->provider->lastPayload['tools'][0])->toBe(['type' => 'function', 'name' => 'get_weather', 'description' => 'Weather', 'parameters' => ['type' => 'object', 'properties' => ['city' => ['type' => 'string']]]]);
         expect($this->provider->lastPayload['reasoning'])->toBe(['effort' => 'high']);
     });
 
