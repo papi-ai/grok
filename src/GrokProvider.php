@@ -509,11 +509,28 @@ class GrokProvider implements ProviderInterface, NamedToolSelectableInterface
      * @throws RateLimitException      When the rate limit is exceeded (HTTP 429)
      * @throws ProviderException       On any other API error
      */
+    /**
+     * What the API says went wrong. xAI sends the error as an object with a message on some
+     * endpoints and as plain text on others, and answers a wrong key with 400, not 401.
+     *
+     * @param array<array-key, mixed>|null $data
+     */
+    private function messageIn(?array $data): string
+    {
+        $error = $data['error'] ?? null;
+
+        return match (true) {
+            is_string($error) => $error,
+            is_array($error) && is_string($error['message'] ?? null) => $error['message'],
+            default => 'Unknown error',
+        };
+    }
+
     protected function throwForStatusCode(int $httpCode, ?array $data): never
     {
-        $errorMessage = $data['error']['message'] ?? 'Unknown error';
+        $errorMessage = $this->messageIn($data);
 
-        if ($httpCode === 401) {
+        if ($httpCode === 401 || ($httpCode < 404 && stripos($errorMessage, 'API key') !== false)) {
             throw new AuthenticationException(
                 $this->getName(),
                 $httpCode,
@@ -568,19 +585,43 @@ class GrokProvider implements ProviderInterface, NamedToolSelectableInterface
 
         curl_exec($ch);
 
-        // Parse SSE events
-        $lines = explode("\n", $buffer);
-        foreach ($lines as $line) {
+        yield from $this->eventsIn((int) curl_getinfo($ch, CURLINFO_HTTP_CODE), curl_error($ch), $buffer);
+    }
+
+    /**
+     * The events of a streamed response, or the failure that came in their place: a request
+     * that never reached the API, or one it refused.
+     *
+     * @return Generator<int, array<array-key, mixed>>
+     */
+    protected function eventsIn(int $httpCode, string $transportError, string $body): Generator
+    {
+        if ($transportError !== '') {
+            throw new RuntimeException("Grok API request failed: {$transportError}");
+        }
+
+        if ($httpCode >= 400) {
+            $refusal = json_decode($body, true);
+            $this->throwForStatusCode($httpCode, is_array($refusal) ? $refusal : null);
+        }
+
+        foreach (explode("\n", $body) as $line) {
             $line = trim($line);
-            if (str_starts_with($line, 'data: ')) {
-                $json = substr($line, 6);
-                if ($json === '[DONE]') {
-                    break;
-                }
-                $event = json_decode($json, true);
-                if ($event !== null) {
-                    yield $event;
-                }
+
+            if (!str_starts_with($line, 'data: ')) {
+                continue;
+            }
+
+            $json = substr($line, 6);
+
+            if ($json === '[DONE]') {
+                break;
+            }
+
+            $event = json_decode($json, true);
+
+            if (is_array($event)) {
+                yield $event;
             }
         }
     }
